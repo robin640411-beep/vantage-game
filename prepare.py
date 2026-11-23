@@ -27,6 +27,38 @@ for number,book,cost,title,body in [
  (1579,'help',2,'磨練你的天賦以完成使命（此行動每場遊戲最多執行一次）','你專注於提升完成使命所需要的技藝。如果你擁有一張經驗牌，在其上添加1或2點強化；如果沒有，獲得2點查看。')]:
  action=next(a for a in cards[str(number)]['actions'] if a['book']==book)
  stories[action['event_uid']]=[number,body,cost,'',1,title]
+# Look p.34 restores mission 1593 and the mission cards' once-per-game research action.
+stories['story:look:1593:01']=[1593,'你代表一群尋求與新世界結盟的大使。建立強大聯繫的最佳方式是向這個星球的文化證明你的價值。獲得試煉地圖（1261）。',2,'',1,'探究如何完成使命（此行動每場遊戲最多執行一次）']
+for number in range(1577,1598):
+ event=f'story:look:{number}:01'
+ actions=cards[str(number)]['actions']
+ if event in stories and not any(a['event_uid']==event for a in actions):
+  actions.insert(0,dict(action_uid=f'action:{number}:research',action='探究',family='查看',event_uid=event,book='look',entry=number,repeatable=False))
+# Restore page continuations after the pair reward in Engage and Overpower.
+for event,card_id in {'story:engage:0367:01': 1164, 'story:engage:0432:01': 1162, 'story:engage:0485:01': 1162, 'story:engage:0494:01': 1165, 'story:engage:0602:01': 1165, 'story:overpower:0367:01': 1164, 'story:overpower:0416:01': 1162, 'story:overpower:0432:01': 1162, 'story:overpower:0457:01': 1165, 'story:overpower:0467:01': 1164, 'story:overpower:0485:01': 1162, 'story:overpower:0494:01': 1165, 'story:overpower:0502:01': 1164, 'story:overpower:0602:01': 1165, 'story:overpower:0756:01': 1162}.items():
+ stories[event][1]+=f'{card_id}。否则，获得$4。'
+# The Take entries preserve the same trap outcomes verified on the other books' pages.
+for number in (102,384):
+ tail=stories[f'story:take:{number:04}:01'][1].replace(' ','').split('一对相同结果，获得物品')[-1]
+ for book in ('engage','overpower'):
+  stories[f'story:{book}:{number:04}:01'][1]+=tail
+# Engage pages 10, 11, 17, 19, 20, 27, 29 and Overpower page 5.
+for key,tail in {'engage:0253': '1160。否則，寶箱突然迸發出火焰，灼傷了你的手（受到1點高溫傷害）。', 'engage:0270': '1165。否則，箱子像陷阱一樣夾住了你的腿；獲得1點強化並失去1點技能（如果可能）。', 'engage:0416': '1162。否則，獲得$4。', 'engage:0457': '1165。否則，獲得$4。', 'engage:0488': '1162。否則，獲得$4。', 'engage:0653': '885。否則，箱子裡彈出一個陷阱，把你肺裡的空氣都撞了出來（受到1點缺氧傷害）。', 'engage:0609': '1163。否則，獲得$4。', 'overpower:0126': '895。否則，獲得$4。'}.items():
+ stories['story:'+key+':01'][1]+=tail
+stories['story:overpower:0270:recovered:0078'][1]='在强大的阻力之下，锁砰然打开。掷5颗技能骰；每颗骰子'+stories['story:engage:0270:01'][1].replace(' ','').split('每颗骰子',1)[1]
+# 1213 is the egg acquired in 302. The scan indexed its inline item number as a story header.
+for misplaced in ('story:take:1213:01','story:move:1213:01'):
+ stories.pop(misplaced,None)
+# The imported result for 074 runs into the next three entries of the book.
+entry=stories['story:overpower:0074:01']
+entry[1]=entry[1].split(' 08(5',1)[0]
+# Both tower faces print Send between Research and Craft. Keep existing save keys stable.
+for number in (407,419):
+ actions=cards[str(number)]['actions']
+ if not any(a['book']=='engage' for a in actions):
+  actions.insert(2,dict(action_uid=f'action:{number:04}:send',action='發送',family='交談',event_uid=f'story:engage:{number:04}:01',book='engage',entry=number,repeatable=False))
+if not any(a['book']=='engage' for a in cards['467']['actions']):
+ cards['467']['actions'].insert(2,dict(action_uid='action:0467:pick',action='挑/撬',family='交談',event_uid='story:engage:0467:01',book='engage',entry=467,repeatable=False))
 for card in cards.values():
  for a in card['actions'][:]:
   if a['event_uid'] in stories:continue

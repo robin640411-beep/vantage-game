@@ -1,0 +1,12 @@
+const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
+const dist=path.resolve(__dirname,'../../dist');
+const context=vm.createContext({});
+vm.runInContext(fs.readFileSync(path.join(dist,'world.js'),'utf8')+'\n'+fs.readFileSync(path.join(dist,'story.js'),'utf8'),context);
+const result=vm.runInContext(`JSON.stringify({current:storyParts(WORLD.stories['story:look:0107:01'][1]),saved:storyParts(rune107Original)})`,context);
+const {current,saved}=JSON.parse(result);
+assert.deepEqual(current,saved);
+assert.equal(current.branched,false);
+assert.match(current.shown,/任務1706/);
+assert.match(current.shown,/擲X顆技能骰/);
+assert.doesNotMatch(current.shown,/選擇一項|刷新|2點幫助|繼續|盾牌/);
+console.log('107 原文及舊存檔不再顯示 108、109 的選項與獎勵');
