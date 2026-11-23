@@ -43,6 +43,14 @@ function chooseHazardDamage(life){
  save();
  render();
 }
+function chooseHazardWaterskin(n){
+ if(!s||!s.pendingHazards?.length||![857,858].includes(n)||!s.grid.includes(n)||!(s.boost[n]>0))return;
+ const h=s.pendingHazards.shift();
+ s.boost[n]--;
+ noteDecision('水袋 '+n+' 消耗 1 點強化，忽略抵達時的'+h.type+'傷害。');
+ save();
+ render();
+}
 const magicLessonSpells={1419:1236,1420:1373,1421:1382,1422:1378,1423:1370,1424:1237,1425:1372,1426:1374,1427:1384,1428:1369,1429:1238,1430:1376,1431:1366,1432:1365,1433:1381};
 function grantLessonSpell(id,uid){
  const spell=magicLessonSpells[id];

@@ -2286,6 +2286,7 @@ for(const [event,row] of Object.entries(WORLD.stories)){
 // 5. Plant cards continuation vs boost
 for(const [event,row] of Object.entries(WORLD.stories)){
  if(event.startsWith('story:take:10')&&row[1].includes('在此植物上獲得1點強化')){
+  if(printedBranches.has(row[1]))continue;
   const idx=row[1].lastIndexOf('你可以繼續');
   if(idx>=0){
    const rest=row[1].slice(idx),m=rest.match(/^(你可以繼續[^。]*?)。否則[，,]\s*(?:因對其營養特性的理解加深[，,]\s*)?在此植物上獲得1點強化。?$/);

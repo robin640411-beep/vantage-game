@@ -119,7 +119,7 @@ function refresh(){s.occupied={};s.penalty=0}
 function stat(i,d){if(d>0&&s.stats[i]===6)s.skill[throwDice('s',1,'屬性已滿 · 隨機技能')[0]]++;else s.stats[i]=Math.max(0,Math.min(6,s.stats[i]+d))}
 const compass={N:'北',S:'南',W:'西',E:'東',NE:'東北',SE:'東南',NW:'西北',SW:'西南','N/NW':'北或西北'};
 const departures={};for(const [key,row] of Object.entries(stories)){if(key.startsWith('story:depart:'))(departures[row[0]]??={})[key]=row}
-function actions(){if(s.rescueArrived)return rescueActions();let list=[];function add(id,kind){for(const a of cards[id]?.actions||[]){if(kind==='地點'&&a.action_uid!==s.practiceAction&&s.used.length&&!a.repeatable&&(!s.extra||s.used.includes(a.action_uid)))continue;if(id===1705||s.once.includes(a.action_uid)||!a.action||!actionEligible(id,a))continue;list.push({id,kind,key:a.action_uid,name:a.action||a.family||skills[keys.indexOf(a.book)],book:a.book,event:a.event_uid})}}
+function actions(){if(s.rescueArrived)return rescueActions();let list=[];function add(id,kind){for(const a of cards[id]?.actions||[]){if(kind==='地點'&&a.action_uid!==s.practiceAction&&s.used.length&&!a.repeatable&&(!s.turnActionExtra||s.used.includes(a.action_uid)))continue;if(id===1705||s.once.includes(a.action_uid)||!a.action||!actionEligible(id,a))continue;list.push({id,kind,key:a.action_uid,name:a.action||a.family||skills[keys.indexOf(a.book)],book:a.book,event:a.event_uid})}}
 add(s.loc,'地點');for(const [dir,e] of Object.entries(cards[s.loc]?.exits||{})){if(e.destination&&e.cost!=null||e.event_uid&&stories[e.event_uid]?.[2]!=null)list.push({id:s.loc,kind:'離開',name:'向'+directions[dir]+'離開',book:'move',event:e.event_uid,dest:e.destination,cost:e.cost})}
 for(const [event,row] of Object.entries(departures[s.loc]||{})){if(row[2]==null||!['NE','SE','NW','SW','N/NW'].includes(row[3])||list.some(x=>x.event===event))continue;list.push({id:s.loc,kind:'離開',name:'向'+(compass[row[3]]||row[3]||'特殊出口')+'離開',book:'move',event,cost:row[2]})}
 if(s.loc===762&&s.promisedExit762)list=list.filter(a=>a.kind!=='離開'||a.event===cards[762].exits.west.event_uid||a.event===cards[762].exits.south.event_uid);
@@ -311,6 +311,7 @@ function mainTurn(){
     '<div style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0 6px;">'+
       btn('失去 1 點生命 ('+statArt(2)+'生命 '+s.stats[2]+' ➔ '+(s.stats[2]-1)+')','chooseHazardDamage(true)',true)+
       btn('同時失去 1 點時間與 1 點士氣 ('+statArt(0)+'時間 '+s.stats[0]+' ➔ '+(s.stats[0]-1)+'，'+statArt(1)+'士氣 '+s.stats[1]+' ➔ '+(s.stats[1]-1)+')','chooseHazardDamage(false)')+
+      (h.type==='高溫'?[857,858].filter(n=>s.grid.includes(n)&&s.boost[n]>0).map(n=>btn('使用水袋 '+n+'（消耗 1 點強化）忽略此高溫傷害','chooseHazardWaterskin('+n+')')).join(''):'')+
     '</div>'+
     (s.pendingHazards.length>1?'<small class="note">尚有 '+(s.pendingHazards.length-1)+' 點傷害待結算。</small>':'')+
    '</div>';

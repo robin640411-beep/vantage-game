@@ -71,6 +71,32 @@ for(const [idStr, info] of Object.entries(MAP_CARD_INFO)){
  if(WORLD.cards[idStr]) WORLD.cards[idStr].name = info.name;
 }
 
+const CARD_ERRATA_NAMES = {
+ 1088: '鋸齒斧',
+ 1434: '飛船',
+ 1253: '噴氣揹包',
+ 957: '滑翔翼',
+ 962: '火焰噴射器',
+ 872: '開山刀',
+ 889: '精靈之劍',
+ 958: '滑板',
+ 1017: '穿梭艇',
+ 842: '攀登者',
+ 1329: '遠古學者',
+ 1348: '林間使者',
+ 1355: '技藝大師'
+};
+for(const [idStr, name] of Object.entries(CARD_ERRATA_NAMES)){
+ if(WORLD.cards[idStr] && (WORLD.cards[idStr].name.length <= 2 || !WORLD.cards[idStr].name || WORLD.cards[idStr].name === '卡牌 ' + idStr)) {
+  WORLD.cards[idStr].name = name;
+ }
+}
+// 官方勘誤：鋸齒斧 1088 放置時獲得 1 點強化
+if (WORLD.cards['1088']) WORLD.cards['1088'].initial = 1;
+// 官方勘誤：滑翔翼 957、火焰噴射器 962 每個骰槽放置挑戰骰時均獲得 1 點強化
+if (WORLD.cards['957']?.slots?.[0]) WORLD.cards['957'].slots[0].boost_reward = 1;
+if (WORLD.cards['962']?.slots?.[0]) WORLD.cards['962'].slots[0].boost_reward = 1;
+
 function cardSummary(n){
  const c=cards[n];if(!c)return '';
  if(n>=1435&&n<=1440){const k=n-1435;return roleNames[k]+'。開局獲得 1 點'+skills[k]+'與 2 點強化。支付 1 強化可重擲自己的 1 顆挑戰骰，若骰面相同，獲得 1 點'+skills[k]+'；也可改將儲備區的牌轉入網格。'}
