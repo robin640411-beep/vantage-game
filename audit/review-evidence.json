@@ -1,0 +1,50 @@
+{
+  "story:engage:0172:01": {
+    "status": "reviewed_scope",
+    "sha256": "e74f182027fbccd9ad7aad4d2085e5a092923106e1594d0c2f37d2a95847ec6f",
+    "sourcePage": "04_007",
+    "test": "../tests/branches/172-boat.cjs",
+    "verifiedScope": "四個目的地或留在原地；共通生命+1；重載不重發",
+    "limits": "已驗證所列案例；不代表全部存檔、滿槽或全遊戲規則已驗證。"
+  },
+  "story:help:0340:01": {
+    "status": "reviewed_scope",
+    "sha256": "3072fb2cb5dce63662221abef0b2dff72184aa3dec43669c9d4495c8534939ac",
+    "sourcePage": "03_014",
+    "test": "../tests/branches/340-repair.cjs",
+    "verifiedScope": "移動+1及任務1676，或物品1151；留在原地",
+    "limits": "已驗證所列案例；不代表全部存檔、滿槽或全遊戲規則已驗證。"
+  },
+  "story:engage:0476:01": {
+    "status": "reviewed_scope",
+    "sha256": "3f741736fc80c8d25a32412b2aa57d344f24967f94be063b599325efe5e12b55",
+    "sourcePage": "04_020",
+    "test": "../tests/branches/476-trade.cjs",
+    "verifiedScope": "網格／儲備出售價值+2，或保留；再選課程／水袋／不購買",
+    "limits": "已驗證所列案例；不代表全部存檔、滿槽或全遊戲規則已驗證。"
+  },
+  "story:help:0646:scan:01": {
+    "status": "reviewed_scope",
+    "sha256": "4d663c53f10f019fc86dfbf952bed552a2d06db09e4ccbc258b87cb1b88aac0d",
+    "sourcePage": "03_025",
+    "test": "../tests/branches/646-offering.cjs",
+    "verifiedScope": "擲骰前先獻牌；物品889並前往647，或任務1656",
+    "limits": "已驗證所列案例；不代表全部存檔、滿槽或全遊戲規則已驗證。"
+  },
+  "story:help:0493:recovered:0129": {
+    "status": "reviewed_scope",
+    "sha256": "76e3f53ab5747d52802692d6ea604a7a85b526bc3eb06db4874e9dd352b351cb",
+    "sourcePage": "03_019",
+    "test": "../tests/branches/493-food.cjs",
+    "verifiedScope": "植物／食物條件；動物822或解除詛咒／士氣；食物不消耗",
+    "limits": "已驗證所列案例；不代表全部存檔、滿槽或全遊戲規則已驗證。"
+  },
+  "story:help:0160:recovered:0047": {
+    "status": "reviewed_scope",
+    "sha256": "a9fd22385318ab729884a08bf1a6c9fd73f031eaa3ec03a82fa593f004316b99",
+    "sourcePage": "03_006",
+    "test": "../tests/branches/160-workshop.cjs",
+    "verifiedScope": "費用2；正確鐵匠故事與任務1644；新舊故事文字；重載不重發",
+    "limits": "滿供應區與其他任務互動未另測。"
+  }
+}

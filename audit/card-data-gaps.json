@@ -1,0 +1,18 @@
+{
+  "1098": {
+    "source": "../dist/cards/1098.webp",
+    "observedName": "「吶尼吶尼」電路",
+    "observedText": "製作成更高級的物品：將此牌替換為電路管（1234）、納米技術（869）或電能火把（1041）。",
+    "activation": "規則第8頁：完整印在卡面的幫助行動，挑戰費用3，另付該牌1點強化。",
+    "dataProblem": "原始GMNotes文字為亂碼，WORLD.cards[1098].actions為空；不得把現有action清單視為完整製作來源。",
+    "status": "implemented_and_tested",
+    "test": "../tests/branches/1098-craft.cjs"
+  },
+  "elementMetadata": {
+    "dataProblem": "已檢查原始GMNotes的1098完整卡牌資料列及WORLD.cards欄位，無可用的卡牌成分分類；骰槽element_specific也缺元素內容。",
+    "affected": [
+      "story:help:1010:01"
+    ],
+    "status": "needs_visual_catalog"
+  }
+}

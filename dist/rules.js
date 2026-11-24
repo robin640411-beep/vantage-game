@@ -257,9 +257,9 @@ function branchTerms(text){
  if(/^.*長期騙局[（(]失去1點時間[）)]$/.test(title))return {'時間':1};
  if(title.endsWith('（失去這名智慧生物）')&&sentientTradeoffs.has(s.a?.event))return s.grid.includes(s.a.id)?{}:null;
  if(/^(?:如果你|若你|你)?(?:不支付|不購買|拒絕)/.test(title))return {};
- title=title.replace(/^(?:如果你|若你)(?=支付)/,'');
- const matches=[...title.matchAll(/(?:支付|花費)(?:[$＄](\d+)|(\d+)(?:點|枚)?(強化|錢幣|移動|查看|接觸|幫助|獲取|壓制|生命|時間|士氣))/g)];
- const rest=title.replace(/(?:支付|花費)(?:[$＄]\d+|\d+(?:點|枚)?(?:強化|錢幣|移動|查看|接觸|幫助|獲取|壓制|生命|時間|士氣))/g,'');
+ title=title.replace(/^(?:如果你|若你)(?=支付)/,'').replace(/[；;]?如果現在不選擇此選項，以後你可以僅對這個選項再次執行此行動/g,'');
+ const matches=[...title.matchAll(/(?:支付|花費)(?:折扣價)?(?:[$＄](\d+)|(\d+)(?:點|枚)?(強化|錢幣|移動|查看|接觸|幫助|獲取|壓制|生命|時間|士氣))/g)];
+ const rest=title.replace(/(?:支付|花費)(?:折扣價)?(?:[$＄]\d+|\d+(?:點|枚)?(?:強化|錢幣|移動|查看|接觸|幫助|獲取|壓制|生命|時間|士氣))/g,'');
  if(/支付|花費|失去|如果|僅當|若你|只有|必須擁有|出售物品/.test(rest))return null;
  const costs={};
  for(const m of matches){const unit=m[3]||'錢幣';costs[unit]=(costs[unit]||0)+Number(m[1]||m[2])}

@@ -131,6 +131,7 @@
           }
         } else if (index === 3) {
           a.printPage = 20;
+          if (typeof unlockVantagePage === 'function') unlockVantagePage(20, true);
           a.text = '阿特拉斯展開了珍貴的植物地圖（《萬境之書》第20頁）。';
           noteDecision('參見植物地圖（《萬境之書》第20頁）。');
         }
@@ -364,6 +365,7 @@
           }
         } else if (index === 2) {
           a.printPage = 30;
+          if (typeof unlockVantagePage === 'function') unlockVantagePage(30, true);
           a.text = '草藥師引導你參閱《萬境之書》第30頁。';
           noteDecision('參閱《萬境之書》第30頁。');
         }
@@ -394,6 +396,7 @@
           }
         } else if (index === 2) {
           a.printPage = 26;
+          if (typeof unlockVantagePage === 'function') unlockVantagePage(26, true);
           a.text = '植物學家為你翻開《萬境之書》第26頁。';
           noteDecision('參閱《萬境之書》第26頁。');
         }
@@ -424,6 +427,7 @@
           }
         } else if (index === 2) {
           a.printPage = 14;
+          if (typeof unlockVantagePage === 'function') unlockVantagePage(14, true);
           a.text = '園藝師指引你參見《萬境之書》第14頁。';
           noteDecision('參見《萬境之書》第14頁。');
         }
@@ -478,6 +482,7 @@
           noteDecision('重擲 1 顆挑戰骰。');
         } else if (index === 3) {
           a.printPage = 19;
+          if (typeof unlockVantagePage === 'function') unlockVantagePage(19, true);
           a.text = '騎士為你展示《萬境之書》第19頁。';
           noteDecision('參見《萬境之書》第19頁。');
         }

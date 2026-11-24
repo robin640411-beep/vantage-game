@@ -94,6 +94,136 @@ function getLocationRegion(locId){
  return 'C';
 }
 
+function extractVantagePagesFromText(text){
+ const pages = [];
+ if(!text || typeof text !== 'string') return pages;
+ const norm = text.replace(/方境之書/g, '萬境之書');
+ for(const m of norm.matchAll(/《萬境之書》(?:故事書)?(?:中|的|上|裡|內|所示|見|參閱|\s)*第\s*(\d{1,2})\s*頁/g)){
+  const p = Number(m[1]);
+  if(p >= 1 && p <= 50) pages.push(p);
+ }
+ return pages;
+}
+
+function unlockVantagePage(page, turnOnly = true){
+ const p = Number(page);
+ if(!s || !Number.isInteger(p) || p < 1 || p > 50) return;
+ s.atlasPages = [...new Set([...(s.atlasPages || []), p])];
+ if(turnOnly){
+  s.vantageTurnPages = s.vantageTurnPages || {};
+  s.vantageTurnPages[p] = s.turn;
+ } else {
+  s.storyAtlasPages = [...new Set([...(s.storyAtlasPages || []), p])];
+ }
+}
+
+function unlockedVantagePages(){
+ const pages = new Set([1]); // 第 1 頁為封面警語
+ if(!s) return pages;
+ if(s.vantageTurnPages){
+  for(const [pStr, turn] of Object.entries(s.vantageTurnPages)){
+   if(turn === s.turn) pages.add(Number(pStr));
+  }
+ }
+ if(Array.isArray(s.storyAtlasPages)){
+  for(const p of s.storyAtlasPages) pages.add(Number(p));
+ }
+ if(Array.isArray(s.journal)){
+  for(const j of s.journal){
+   for(const p of extractVantagePagesFromText(j.body)) pages.add(p);
+  }
+ }
+ if(s.phase === 'result' && s.a?.text){
+  const shown = typeof storyParts === 'function' ? storyParts(s.a.text, s.a.choice).shown : s.a.text;
+  for(const p of extractVantagePagesFromText(shown)) pages.add(p);
+  if(typeof entryReferences === 'function' && typeof storySource === 'function'){
+   for(const ref of entryReferences(shown, storySource(s.a))){
+    if(ref.book === 'atlas' && ref.page && !ref.gate) pages.add(Number(ref.id));
+   }
+  }
+ }
+ return pages;
+}
+
+function canViewVantagePage(page){
+ return unlockedVantagePages().has(Number(page));
+}
+
+function collectKnownRegionInfo(){
+ const regions = new Set();
+ const locRegions = new Map();
+ if(!s) return { regions, locRegions };
+ const allCards = (typeof cards !== 'undefined' ? cards : (typeof WORLD !== 'undefined' ? WORLD.cards : {}));
+ const quadToReg = {};
+ const pageToReg = {};
+ for(const r of WORLD_REGIONS){
+  quadToReg[r.quadrantLabel] = r.id;
+  pageToReg[r.page] = r.id;
+ }
+ // 1. 已解鎖的《萬境之書》地區圖頁（第 31–46 頁）
+ for(const p of unlockedVantagePages()){
+  if(pageToReg[p]) regions.add(pageToReg[p]);
+ }
+ // 2. 從故事結果與日誌解析已獲知的地區／區域
+ const scanText = (text, loc) => {
+  if(!text || typeof text !== 'string') return;
+  for(const m of text.matchAll(/地區\s*([A-P])/g)) regions.add(m[1]);
+  const here = text.match(/位於地區\s*([A-P])/);
+  if(here && loc) locRegions.set(Number(loc), here[1]);
+  for(const m of text.matchAll(/區域\s*((?:NW|NE|SW|SE)-[1-4])/g)){
+   const reg = quadToReg[m[1]];
+   if(reg){
+    regions.add(reg);
+    if(loc) locRegions.set(Number(loc), reg);
+   }
+  }
+ };
+ if(Array.isArray(s.journal)){
+  for(const j of s.journal){
+   scanText(j.body, j.loc);
+   if(j.book === 'look' && j.loc && allCards[j.loc]?.home === 'location'){
+    const reg = getLocationRegion(j.loc);
+    regions.add(reg);
+    locRegions.set(Number(j.loc), reg);
+   }
+  }
+ }
+ if(s.phase === 'result' && s.a?.text){
+  const shown = typeof storyParts === 'function' ? storyParts(s.a.text, s.a.choice).shown : s.a.text;
+  scanText(shown, s.a.id || s.loc);
+  if(s.a.book === 'look' && allCards[s.loc]?.home === 'location'){
+   const reg = getLocationRegion(s.loc);
+   regions.add(reg);
+   locRegions.set(Number(s.loc), reg);
+  }
+ }
+ // 3. 在某地點執行過《查看》行動（依規則書第 8 頁，《查看》條目括號內標註該地點所屬地區）
+ const checkLookUsed = (locId, usedList) => {
+  if(!usedList?.length) return;
+  const c = allCards[String(locId)];
+  if(!c || c.home !== 'location' || !c.actions) return;
+  const didLook = c.actions.some(a => a.book === 'look' && usedList.includes(a.action_uid));
+  if(didLook){
+   const reg = getLocationRegion(locId);
+   regions.add(reg);
+   locRegions.set(Number(locId), reg);
+  }
+ };
+ if(s.visits){
+  for(const [locStr, usedList] of Object.entries(s.visits)) checkLookUsed(Number(locStr), usedList);
+ }
+ if(s.loc && s.used) checkLookUsed(s.loc, s.used);
+ return { regions, locRegions };
+}
+
+function knownRegions(){
+ return collectKnownRegionInfo().regions;
+}
+
+function knownLocationRegion(locId){
+ return collectKnownRegionInfo().locRegions.get(Number(locId)) || null;
+}
+
 function visitedLocations(){
  if(!s)return [];
  const allCards = (typeof cards !== 'undefined' ? cards : (typeof WORLD !== 'undefined' ? WORLD.cards : {}));
@@ -309,7 +439,7 @@ function computeMapLayout(visited, startLoc, travelRoutes = []){
  };
 }
 
-let currentMapMode = 'planet'; // Default to 4x4 World Region Grid
+let currentMapMode = 'grid'; // 預設顯示玩家親自探索的 2D 羅盤網格地圖
 
 function setMapMode(mode){
  currentMapMode = mode;
@@ -325,23 +455,45 @@ function mapHtml(mode = currentMapMode, inPanel = false){
  const visited = visitedLocations();
  const routes = allTravelRoutes();
  const curLoc = s.loc;
- const curRegion = getLocationRegion(curLoc);
+ const knownInfo = collectKnownRegionInfo();
+ const knownRegs = knownInfo.regions;
+ const curKnownReg = knownInfo.locRegions.get(Number(curLoc)) || null;
+ const unlockedPages = unlockedVantagePages();
  const allCards = (typeof cards !== 'undefined' ? cards : (typeof WORLD !== 'undefined' ? WORLD.cards : {}));
 
  let contentHtml = '';
 
  if(mode === 'planet'){
-  // 4x4 Planet Region Grid
+  // 4x4 Planet Region Grid（未獲知地區保持未知迷霧，嚴格遵守《萬境之書》規則）
   const visitedByRegion = {};
   for(const r of WORLD_REGIONS) visitedByRegion[r.id] = [];
   for(const id of visited){
-   const r = getLocationRegion(id);
-   if(visitedByRegion[r]) visitedByRegion[r].push(id);
+   const knownReg = knownInfo.locRegions.get(Number(id));
+   if(knownReg && visitedByRegion[knownReg]) visitedByRegion[knownReg].push(id);
   }
 
   const regionTiles = WORLD_REGIONS.map(reg => {
-   const isCurrent = reg.id === curRegion;
+   const isKnown = knownRegs.has(reg.id);
+   if(!isKnown){
+    return `
+     <div class="regionTile unknownRegion">
+      <div>
+       <div class="regionTileHead">
+        <span class="regionLetter">?</span>
+        <span class="regionQuad">未知區域</span>
+       </div>
+       <div class="regionName">未知地區</div>
+       <div class="regionDesc">尚未獲得此地區情報</div>
+      </div>
+      <div style="margin-top:8px;border-top:1px dashed #d5cdb8;padding-top:6px;font-size:.78rem;color:#8a8370;text-align:center;">
+       🔒 尚未解鎖
+      </div>
+     </div>
+    `;
+   }
+   const isCurrent = curKnownReg === reg.id;
    const list = visitedByRegion[reg.id] || [];
+   const canViewPage = unlockedPages.has(reg.page);
    const locPills = list.map(id => {
     const isCurLoc = id === curLoc;
     return `<button class="regionLocPill ${isCurLoc ? 'isCurrent' : ''}" onclick="inspectLocation(${id}, 'planet', ${inPanel})">${isCurLoc ? '📍 ' : ''}${pad(id)}</button>`;
@@ -358,25 +510,37 @@ function mapHtml(mode = currentMapMode, inPanel = false){
       <div class="regionDesc">${esc(reg.desc)}</div>
       ${isCurrent ? '<div class="curBadge" style="margin-bottom:6px;">📍 當前所在地區</div>' : ''}
       <div style="font-size:.8rem;color:#4f6458;margin:4px 0;">已探明 <b>${list.length}</b> 個地點</div>
-      ${list.length ? `<div class="regionLocPills">${locPills}</div>` : '<div style="font-size:.76rem;color:#8a8370;margin:4px 0;">尚未探索本地區</div>'}
+      ${list.length ? `<div class="regionLocPills">${locPills}</div>` : '<div style="font-size:.76rem;color:#8a8370;margin:4px 0;">尚未記錄本地區地點</div>'}
      </div>
      <div style="margin-top:8px;border-top:1px dashed #d5cdb8;padding-top:6px;">
-      <button style="width:100%;font-size:.82rem;padding:5px;" onclick="pageView(9, ${reg.page})">📖 查閱地區圖（第 ${reg.page} 頁）</button>
+      ${canViewPage
+       ? `<button style="width:100%;font-size:.82rem;padding:5px;" onclick="pageView(9, ${reg.page})">📖 查閱地區圖（第 ${reg.page} 頁）</button>`
+       : `<div style="font-size:.76rem;color:#8a8370;text-align:center;">🔒 須由卡牌或行動指示解鎖地區圖</div>`}
      </div>
     </div>
    `;
   }).join('');
 
+  const macroPages = [
+   [7, '📖 星球全圖（第 7 頁）'],
+   [2, '📖 16 地區矩陣圖（第 2 頁）'],
+   [3, '西北半球 NW（第 3 頁）'],
+   [4, '東北半球 NE（第 4 頁）'],
+   [6, '西南半球 SW（第 6 頁）'],
+   [5, '東南半球 SE（第 5 頁）']
+  ].filter(([p]) => unlockedPages.has(p));
+
+  const quickNavHtml = macroPages.length
+   ? `<div class="quickNavBanner">
+       <strong style="width:100%;font-size:.88rem;color:#233a32;margin-bottom:2px;">📜 已解鎖的《萬境之書》全圖頁：</strong>
+       ${macroPages.map(([p, label]) => `<button class="primary" onclick="pageView(9, ${p})">${label}</button>`).join('')}
+      </div>`
+   : `<div class="quickNavBanner">
+       <span style="font-size:.84rem;color:#596b60;">🔒 依據《萬境之書》與《秘密之書》第 14 頁規則：<b>只有在卡牌或行動結果的指示下才能參見《萬境之書》</b>。在未獲得對應卡牌或地區情報前，各地區均處於未知狀態。</span>
+      </div>`;
+
   contentHtml = `
-   <div class="quickNavBanner">
-    <strong style="width:100%;font-size:.88rem;color:#233a32;margin-bottom:2px;">📜 《萬境之書》全地圖導航：</strong>
-    <button class="primary" onclick="pageView(9, 7)">📖 星球全圖（第 7 頁）</button>
-    <button onclick="pageView(9, 2)">📖 16 地區矩陣圖（第 2 頁）</button>
-    <button onclick="pageView(9, 3)">西北半球 NW (A,B,E,F)</button>
-    <button onclick="pageView(9, 4)">東北半球 NE (C,D,G,H)</button>
-    <button onclick="pageView(9, 6)">西南半球 SW (I,J,M,N)</button>
-    <button onclick="pageView(9, 5)">東南半球 SE (K,L,O,P)</button>
-   </div>
+   ${quickNavHtml}
 
    <div class="worldGridContainer">
     <div class="worldRegionGrid">
@@ -385,7 +549,7 @@ function mapHtml(mode = currentMapMode, inPanel = false){
    </div>
 
    <p class="note" style="margin-top: 10px;line-height:1.6;">
-    🧭 <b>規則書說明（第 8 頁）</b>：星球由 A 至 P 共 16 個廣闊地區組成，排布為 4×4 星球矩陣（第一行 A–D 為北半球，第四行 M–P 為南半球）。各具體地點所屬地區記載於《查看》故事書條目及《萬境之書》中。點選任意地區卡片即可翻閱該區專屬手繪地圖！
+    🧭 <b>規則書說明（第 8 頁）</b>：各具體地點所屬地區僅會在執行《查看》行動、故事結果明示、或透過卡牌指示查閱《萬境之書》後逐步揭曉。已揭曉地區：<b>${knownRegs.size} / 16</b>。
    </p>
   `;
  } else if(mode === 'grid'){
@@ -394,26 +558,25 @@ function mapHtml(mode = currentMapMode, inPanel = false){
    const id = node.id;
    const c = allCards[id];
    const isCurrent = id === curLoc;
-   const reg = getLocationRegion(id);
+   const knownReg = knownInfo.locRegions.get(Number(id));
    const usedCount = (s.visits?.[id] || (isCurrent ? s.used : []))?.length || 0;
    const exits = c?.exits || {};
    const exitPills = Object.entries(exits).map(([dir, ex]) => {
     const dirZh = (typeof directions !== 'undefined' ? directions[dir] : null) || dir;
     if(ex.destination){
      const isVisited = visited.includes(ex.destination);
-     return `<span class="exitPill ${isVisited ? 'visited' : ''}" title="${isVisited ? '已探索' : '未探明'}">${dirZh} ➜ ${pad(ex.destination)}</span>`;
+     return `<span class="exitPill ${isVisited ? 'visited' : ''}" title="${isVisited ? '已探索' : '相鄰列出地點（未造訪）'}">${dirZh} ➜ ${pad(ex.destination)}</span>`;
     }
     const storyDest = getExitStoryDestination(ex);
-    if(storyDest){
-     const isVisited = visited.includes(storyDest);
-     return `<span class="exitPill story ${isVisited ? 'visited' : ''}" title="${isVisited ? '已探索' : '未探明'}">${dirZh} ➜ ${pad(storyDest)}</span>`;
+    if(storyDest && visited.includes(storyDest)){
+     return `<span class="exitPill story visited" title="已探索之離開路線">${dirZh} ➜ ${pad(storyDest)}</span>`;
     }
-    return `<span class="exitPill story" title="特殊離開路線">${dirZh} ➜ 離開</span>`;
+    return `<span class="exitPill story" title="未探索之離開路線（★）">${dirZh} ➜ 未知（★）</span>`;
    }).join('');
 
    return `<div class="mapTile ${isCurrent ? 'current' : ''}" style="grid-column: ${node.x + 1}; grid-row: ${node.y + 1};" onclick="inspectLocation(${id}, 'grid', ${inPanel})">
     ${isCurrent ? '<span class="curBadge">📍 當前所在</span>' : ''}
-    <div style="font-size:.76rem;color:#6b5f4c;font-weight:700;">地區 ${reg}</div>
+    <div style="font-size:.76rem;color:#6b5f4c;font-weight:700;">${knownReg ? '地區 ' + knownReg : '地區 未知'}</div>
     <img class="mapCardThumb" src="cards/${id}.webp" alt="地點 ${pad(id)}" loading="lazy">
     <h4>地點 ${pad(id)}</h4>
     <div class="tileMeta">${usedCount ? '已執行 ' + usedCount + ' 項行動' : '尚未執行行動'}</div>
@@ -431,7 +594,7 @@ function mapHtml(mode = currentMapMode, inPanel = false){
      ${tiles}
     </div>
    </div>
-   <p class="note" style="margin-top: 10px;">💡 提示：2D 羅盤空間地圖依照規則書羅盤方位（北朝上、南朝下、東朝右、西朝左）正交排布地點。點擊卡片可查看卡面詳情與出口情報。</p>
+   <p class="note" style="margin-top: 10px;">💡 提示：僅顯示你親自探索過的地點與羅盤相對方位。未探索的 ★ 路線與未揭曉的地區資訊皆會保持未知狀態。</p>
   `;
  } else if(mode === 'trail'){
   const steps = [];
@@ -453,13 +616,13 @@ function mapHtml(mode = currentMapMode, inPanel = false){
     ${steps.map((st, i) => {
      const isCur = st.loc === curLoc;
      const caption = (typeof locationCaptions !== 'undefined' ? locationCaptions[st.loc] : null) || (typeof cardSummary !== 'undefined' ? cardSummary(st.loc) : '');
-     const reg = getLocationRegion(st.loc);
+     const knownReg = knownInfo.locRegions.get(Number(st.loc));
      return `
       <div class="trailStep ${isCur ? 'currentStep' : ''}" onclick="inspectLocation(${st.loc}, 'trail', ${inPanel})">
        <span class="stepNum">第 ${i + 1} 站<br><small>第 ${st.turn} 回合</small></span>
        <img src="cards/${st.loc}.webp" alt="地點 ${pad(st.loc)}" loading="lazy">
        <div class="stepInfo">
-        <h4>地點 ${pad(st.loc)}（地區 ${reg}） ${isCur ? '<span class="curBadge">📍 目前位置</span>' : ''}</h4>
+        <h4>地點 ${pad(st.loc)}（${knownReg ? '地區 ' + knownReg : '地區 未知'}） ${isCur ? '<span class="curBadge">📍 目前位置</span>' : ''}</h4>
         <p>${esc(caption)}</p>
        </div>
        <button class="smallBtn" onclick="event.stopPropagation(); inspectLocation(${st.loc}, 'trail', ${inPanel})">詳情</button>
@@ -474,41 +637,44 @@ function mapHtml(mode = currentMapMode, inPanel = false){
    const info = MAP_ITEM_CARDS[mid];
    const inGrid = s.grid?.includes(mid);
    const boost = s.boost?.[mid] || 0;
+   const unlocked = unlockedPages.has(info.page);
+   const actionBtn = unlocked
+    ? `<button class="primary" style="font-size:.82rem;" onclick="pageView(9, ${info.page})">📖 查閱《萬境之書》第 ${info.page} 頁（已解鎖）</button>`
+    : (inGrid
+      ? (boost >= 1
+        ? `<button class="primary" style="font-size:.82rem;" onclick="useMapCard(${mid}, 1)">支付 1 強化查閱《萬境之書》第 ${info.page} 頁</button>`
+        : `<button disabled style="font-size:.82rem;">強化不足（需支付 1 強化才能查閱第 ${info.page} 頁）</button>`)
+      : `<div style="font-size:.8rem;color:#8a8370;">🔒 須將此地圖放入網格並支付 1 點強化，方可在本回合查閱《萬境之書》第 ${info.page} 頁。</div>`);
    return `
     <div class="mapItemCard">
      <img src="cards/${mid}.webp" alt="${info.name}" onclick="card(${mid})">
      <div class="mapItemBody">
-      <h4>${mid} · ${esc(info.name)} ${inGrid ? '<span class="curBadge">在網格中</span>' : ''}</h4>
+      <h4>${mid} · ${esc(info.name)} ${inGrid ? '<span class="curBadge">在網格中</span>' : '<span style="font-size:.75rem;color:#776d58;">（儲備區）</span>'}</h4>
       <p>${esc(info.desc)}</p>
       <div style="font-size:.82rem;color:#495d52;margin-bottom:6px;">當前強化：<b>${boost}</b> 點</div>
-      <button class="primary" style="font-size:.82rem;" onclick="pageView(9, ${info.page})">📖 查閱《萬境之書》第 ${info.page} 頁</button>
+      ${actionBtn}
      </div>
     </div>
    `;
-  }).join('') : '<p style="color:#776d58;margin:8px 0;">目前尚未持有隨身地圖卡牌（如 1259 高塔地圖、1251 城市地圖等）。</p>';
+  }).join('') : '<p style="color:#776d58;margin:8px 0;">目前尚未獲得任何隨身地圖卡牌。獲得地圖卡並放入網格支付 1 點強化後，即可查閱對應的《萬境之書》頁面。</p>';
 
-  const allMapCardsOverview = Object.entries(MAP_ITEM_CARDS).map(([id, info]) => {
-   const have = acquired.includes(+id);
-   return `
-    <div style="padding:6px 8px;border:1px solid #d5cdb8;border-radius:6px;background:${have ? '#f0f7f2' : '#fff'};font-size:.82rem;display:flex;justify-content:space-between;align-items:center;">
-     <span>${have ? '✓ ' : ''}<b>${id} · ${esc(info.name)}</b></span>
-     <button class="smallBtn" onclick="pageView(9, ${info.page})">第 ${info.page} 頁</button>
-    </div>
-   `;
-  }).join('');
+  const unlockedOtherPages = [...unlockedPages].filter(p => p > 1).sort((a, b) => a - b);
+  const unlockedListHtml = unlockedOtherPages.length
+   ? `<h3 style="margin-top:16px;">📖 目前可查閱的《萬境之書》頁面</h3>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;">
+       ${unlockedOtherPages.map(p => `<button class="smallBtn" onclick="pageView(9, ${p})">📖 《萬境之書》第 ${p} 頁</button>`).join('')}
+      </div>`
+   : `<div style="margin-top:14px;padding:10px;border:1px dashed #cfc7b4;border-radius:8px;background:#faf6ec;font-size:.84rem;color:#6b5f4c;">
+       🔒 目前尚未解鎖任何《萬境之書》頁面（已收集隨身地圖卡：<b>${acquired.length} / ${Object.keys(MAP_ITEM_CARDS).length}</b>）。
+      </div>`;
 
   contentHtml = `
    <div style="margin:10px 0;">
     <h3>📜 已獲取的隨身地圖卡</h3>
     <div class="mapItemsList">${acquiredHtml}</div>
-
-    <h3 style="margin-top:16px;">📚 《萬境之書》全地圖索引清單</h3>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:6px;margin:8px 0;">
-     ${allMapCardsOverview}
-    </div>
-
+    ${unlockedListHtml}
     <p class="note" style="margin-top:12px;line-height:1.6;">
-     💡 <b>《秘密之書》第 14 頁地圖規則</b>：當你在自己的網格中放置一張地圖時，與其相鄰的每張卡牌（邊緣相接觸）使得地圖獲得 1 點強化。通過支付強化，你可以在《萬境之書》中參見該地圖的大版本。
+     💡 <b>《秘密之書》第 14 頁地圖規則</b>：只有在卡牌或行動結果的指示下才能參見《萬境之書》。當你在網格中放置一張地圖時，每張相鄰卡牌會使其獲得 1 點強化；支付 1 點強化即可在本回合結束前參見《萬境之書》中該地圖的大版本。
     </p>
    </div>
   `;
@@ -518,13 +684,13 @@ function mapHtml(mode = currentMapMode, inPanel = false){
     ${visited.map(id => {
      const isCur = id === curLoc;
      const caption = (typeof locationCaptions !== 'undefined' ? locationCaptions[id] : null) || (typeof cardSummary !== 'undefined' ? cardSummary(id) : '');
-     const reg = getLocationRegion(id);
+     const knownReg = knownInfo.locRegions.get(Number(id));
      const used = (s.visits?.[id] || (isCur ? s.used : []))?.length || 0;
      return `
       <div class="exploredItem ${isCur ? 'current' : ''}">
        <img src="cards/${id}.webp" alt="地點 ${pad(id)}" loading="lazy" onclick="inspectLocation(${id}, 'list', ${inPanel})">
        <div class="itemBody">
-        <h3>地點 ${pad(id)}（地區 ${reg}） ${isCur ? '<span class="curBadge">📍 當前所在</span>' : ''}</h3>
+        <h3>地點 ${pad(id)}（${knownReg ? '地區 ' + knownReg : '地區 未知'}） ${isCur ? '<span class="curBadge">📍 當前所在</span>' : ''}</h3>
         <p class="caption">${esc(caption)}</p>
         <small>此地點已執行 ${used} 項行動</small>
         <div style="margin-top: 6px;">
@@ -544,13 +710,13 @@ function mapHtml(mode = currentMapMode, inPanel = false){
     <h2>🗺️ 星球探索地圖</h2>
     <div class="mapStats">
      <span>已探明 <b>${visited.length}</b> 個地點</span>
-     <span>目前所在 <b>地點 ${pad(curLoc)}（地區 ${curRegion}）</b></span>
+     <span>目前所在 <b>地點 ${pad(curLoc)}（${curKnownReg ? '地區 ' + curKnownReg : '地區 未知'}）</b></span>
      <span>航程 <b>第 ${s.turn} 回合</b></span>
     </div>
    </div>
    <div class="mapTabs">
-    <button class="${mode === 'planet' ? 'primary' : ''}" onclick="setMapMode('planet')">🌍 4×4 星球地區總覽</button>
     <button class="${mode === 'grid' ? 'primary' : ''}" onclick="setMapMode('grid')">🗺️ 網格地圖</button>
+    <button class="${mode === 'planet' ? 'primary' : ''}" onclick="setMapMode('planet')">🌍 4×4 星球地區總覽</button>
     <button class="${mode === 'items' ? 'primary' : ''}" onclick="setMapMode('items')">📜 隨身地圖圖卷</button>
     <button class="${mode === 'trail' ? 'primary' : ''}" onclick="setMapMode('trail')">👣 探索足跡</button>
     <button class="${mode === 'list' ? 'primary' : ''}" onclick="setMapMode('list')">📑 地點圖鑑</button>
@@ -560,7 +726,7 @@ function mapHtml(mode = currentMapMode, inPanel = false){
  `;
 }
 
-function viewMap(mode = 'planet'){
+function viewMap(mode = 'grid'){
  currentMapMode = mode;
  const html = mapHtml(mode, false);
  if(html) show(html);
@@ -570,12 +736,13 @@ function mapPanel(){
  return mapHtml(currentMapMode, true);
 }
 
-function inspectLocation(locId, fromMode = 'planet', inPanel = false){
+function inspectLocation(locId, fromMode = 'grid', inPanel = false){
  const allCards = (typeof cards !== 'undefined' ? cards : (typeof WORLD !== 'undefined' ? WORLD.cards : {}));
  const c = allCards[locId];
  if(!c) return warn('無此地點資料。');
  const isCurrent = s?.loc === locId;
- const reg = getLocationRegion(locId);
+ const knownReg = knownLocationRegion(locId);
+ const regLabel = knownReg ? '地區 ' + knownReg : '地區 未知';
  const caption = (typeof locationCaptions !== 'undefined' ? locationCaptions[locId] : null) || (typeof cardSummary !== 'undefined' ? cardSummary(locId) : '');
  const visited = visitedLocations();
  const used = (s?.visits?.[locId] || (isCurrent ? s?.used : [])) || [];
@@ -587,7 +754,12 @@ function inspectLocation(locId, fromMode = 'planet', inPanel = false){
    const isV = visited.includes(ex.destination);
    destZh = `地點 ${pad(ex.destination)} ${isV ? '<b style=\"color:#206552\">（已探明）</b>' : '<span style=\"color:#887755\">（未探明）</span>'}`;
   } else {
-   destZh = '《離開》故事書特殊路線';
+   const storyDest = getExitStoryDestination(ex);
+   if(storyDest && visited.includes(storyDest)){
+    destZh = `地點 ${pad(storyDest)} <b style=\"color:#206552\">（已探明之 ★ 路線）</b>`;
+   } else {
+    destZh = '未知地點（《離開》故事書 ★ 路線）';
+   }
   }
   return `<tr><td>向${dirZh}</td><td>${destZh}</td><td>費用 ${ex.cost != null ? ex.cost : '依條目'}</td></tr>`;
  }).join('');
@@ -603,9 +775,9 @@ function inspectLocation(locId, fromMode = 'planet', inPanel = false){
   <section class="locationDetailView">
    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
     <button onclick="${backFn}">⬅ 返回探索地圖</button>
-    <span style="font-size:.9rem;color:#55695e;">${isCurrent ? '📍 當前所在位置' : '已探索地點'} · 地區 ${reg}</span>
+    <span style="font-size:.9rem;color:#55695e;">${isCurrent ? '📍 當前所在位置' : '已探索地點'} · ${regLabel}</span>
    </div>
-   <h2>地點 ${pad(locId)}（地區 ${reg}）</h2>
+   <h2>地點 ${pad(locId)}（${regLabel}）</h2>
    <img class="art" src="cards/${locId}.webp" alt="地點 ${pad(locId)}" style="max-height:42vh;cursor:zoom-in;" onclick="this.classList.toggle('zoomed')">
    <p class="story" style="margin:12px 0;font-size:1.05rem;">${esc(caption)}</p>
 

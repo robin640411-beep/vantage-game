@@ -95,9 +95,12 @@ function card(n){
   const info=MAP_CARD_INFO[n];
   const inGrid=s?.grid?.includes(n);
   const b=s?.boost?.[n]||0;
+  const unlocked=typeof canViewVantagePage==='function'&&canViewVantagePage(info.page);
   extraActions='<div class="cardModalActions" style="margin-top:12px;display:flex;flex-direction:column;gap:8px;">'+
-    btn('📖 立即查閱《萬境之書》第 '+info.page+' 頁（'+info.name+'）','cardZoom.close();pageView(9,'+info.page+')',true)+
-    (inGrid&&b>=1?btn('支付 1 強化並查閱《萬境之書》第 '+info.page+' 頁（現有 '+b+' 強化）','cardZoom.close();useMapCard('+n+',1)'):'')+
+    (unlocked?btn('📖 查閱《萬境之書》第 '+info.page+' 頁（'+info.name+'·已解鎖）','cardZoom.close();pageView(9,'+info.page+')',true):'')+
+    (!unlocked&&inGrid&&b>=1?btn('支付 1 強化並查閱《萬境之書》第 '+info.page+' 頁（現有 '+b+' 強化）','cardZoom.close();useMapCard('+n+',1)',true):'')+
+    (!unlocked&&inGrid&&b<1?'<button disabled>強化不足（需支付 1 強化方可查閱《萬境之書》第 '+info.page+' 頁）</button>':'')+
+    (!unlocked&&!inGrid?'<p class="note" style="margin:0;">🔒 須將此地圖放入網格並支付 1 點強化，方可在本回合查閱《萬境之書》第 '+info.page+' 頁。</p>':'')+
     (inGrid&&b>=2?btn('支付 2 強化獲得 1 點時間（現有 '+b+' 強化）','cardZoom.close();useMapCard('+n+',2)'):'')+
     '</div>';
  }
@@ -485,6 +488,7 @@ function useMapCard(id,cost){
  if(curBoost<cost)return warn(name+'上的強化不足（需要 '+cost+' 點）。');
  if(cost===1){
   s.boost[id]-=1;
+  if(typeof unlockVantagePage==='function')unlockVantagePage(page,true);
   noteDecision('支付'+name+'上的 1 點強化，查閱《萬境之書》第 '+page+' 頁。');
   save();
   pageView(9,page);
@@ -562,11 +566,13 @@ function cardAbilities(){
    const mid=Number(midStr);
    if(s.grid.includes(mid)){
     const b=s.boost[mid]||0;
+    const unlocked=typeof canViewVantagePage==='function'&&canViewVantagePage(info.page);
     html+='<div class="cardAbilities" style="margin-top:12px;padding:10px;background:#f6f1e4;border:1px solid #d5cdb8;border-radius:8px;">'+
      '<h4 style="margin:0 0 6px;">🗺️ 卡牌異能：'+info.name+'（'+mid+'）<small style="margin-left:8px;font-weight:normal;color:#55695e;">現有 '+b+' 強化</small></h4>'+
      '<div style="display:flex;flex-wrap:wrap;gap:6px;">'+
-     btn('📖 查閱《萬境之書》第 '+info.page+' 頁','pageView(9,'+info.page+')',true)+
-     (b>=1?btn('支付 1 強化並查閱第 '+info.page+' 頁','useMapCard('+mid+',1)'):'')+
+     (unlocked?btn('📖 查閱《萬境之書》第 '+info.page+' 頁（本回合已解鎖）','pageView(9,'+info.page+')',true):'')+
+     (!unlocked&&b>=1?btn('支付 1 強化並查閱第 '+info.page+' 頁','useMapCard('+mid+',1)',true):'')+
+     (!unlocked&&b<1?'<button disabled>強化不足（需 1 強化查閱第 '+info.page+' 頁）</button>':'')+
      (b>=2?btn('支付 2 強化獲得 1 時間','useMapCard('+mid+',2)'):'')+
      '</div></div>';
    }
@@ -610,7 +616,7 @@ function bag(){const selDie=s.phase==='dice'?s.a?.dice?.[s.a?.selectedDie||0]:nu
 function warn(t){notice=t;render()}
 function records(){return '<h2>探險手冊</h2>'+ (s.duel?btn('繼續交鋒','duelView()'):'')+'<p>回合依序為宣告行動、揭示費用、支付技能、擲骰、放置、承受懲罰、閱讀結果及結束。普通地點行動每局在同一地點限一次，重訪時仍受限制。</p><div>'+select('book',['規則','壓制','幫助','接觸','查看','獲取','秘密','移動','萬境','離開'].map((v,i)=>opt(i+1,v)).join(''))+' 第 <input id="page" value="1" type="number" min="1"> 頁'+btn('翻閱','pageView()')+btn('📖 查閱官方FAQ(第1書第15頁)','pageView(1,15)')+'</div><h3>指定條目</h3><input id="find" placeholder="牌號" type="number">'+btn('查卡','card(+val("find"))')+btn('查故事','lookup()')+'<h3>旅程紀錄</h3>'+s.log.slice(-20).reverse().map(l=>'<div>'+esc(l)+'</div>').join('')+'<hr>'+goalPanel()+btn('依規則結束探險','ending()')+btn('📖 骰子與規則指南','showRuleGuide()')+btn('🌐 官方 FAQ 與線上澄清','window.open("https://stonemaiergames.com/games/vantage/rules-faq","_blank")')+btn('開始一段新旅程','newJourney(true)')}
 function lookup(){let id=+val('find');let list=Object.entries(stories).filter(([,v])=>v[0]===id);show('<h2>條目 '+id+'</h2>'+list.map(([k,v])=>'<details><summary>'+esc(k.split(':')[1])+' · '+esc(v[5])+'</summary><p>'+esc(v[1])+'</p></details>').join(''))}
-function pageView(b,p){b=b??(document.getElementById('book')?+val('book'):1);p=p??(document.getElementById('page')?+val('page'):1);let max=[17,40,36,48,36,36,16,36,50,36][b-1]||50;if(!Number.isInteger(p)||p<1||p>max)return warn('此書共 '+max+' 頁。');show('<div>'+(p>1?btn('上一頁','pageView('+b+','+(p-1)+')'):'')+p+' / '+max+(p<max?btn('下一頁','pageView('+b+','+(p+1)+')'):'')+'</div><img onclick="this.classList.toggle(\'zoomed\')" alt="書頁 '+p+'" src="books/'+String(b).padStart(2,'0')+'_'+String(p).padStart(3,'0')+'.webp">')}
+function pageView(b,p){b=b??(document.getElementById('book')?+val('book'):1);p=p??(document.getElementById('page')?+val('page'):1);let max=[17,40,36,48,36,36,16,36,50,36][b-1]||50;if(!Number.isInteger(p)||p<1||p>max)return warn('此書共 '+max+' 頁。');if(b===9&&p>1&&typeof canViewVantagePage==='function'&&!canViewVantagePage(p))return warn('依規則書規定，在尚未獲得對應卡牌（並支付強化）或行動結果指示前，無法查閱《萬境之書》第 '+p+' 頁。');const nav=b===9?'<span>《萬境之書》第 '+p+' 頁（依規則禁止自由翻閱未解鎖頁面）</span>':(p>1?btn('上一頁','pageView('+b+','+(p-1)+')'):'')+p+' / '+max+(p<max?btn('下一頁','pageView('+b+','+(p+1)+')'):'');show('<div>'+nav+'</div><img onclick="this.classList.toggle(\'zoomed\')" alt="書頁 '+p+'" src="books/'+String(b).padStart(2,'0')+'_'+String(p).padStart(3,'0')+'.webp">')}
 function ending(){let options=[];if(s.missionDone)options.push('使命勝利');if(s.fateDone)options.push(s.missionDone?'史詩勝利':'命運勝利');options.push('旅程告終');show('<h2>結算探險</h2>'+goalPanel()+'<p>依使命、命運或故事條目指示選擇結局。</p>'+options.map(v=>btn(v,'endGame('+JSON.stringify(v)+')')).join(''))}
 function endGame(t){if(!['旅程告終','使命勝利','命運勝利','史詩勝利'].includes(t)||s.phase==='ended')return;if(t==='使命勝利'&&!s.missionDone||t==='命運勝利'&&!s.fateDone||t==='史詩勝利'&&!(s.fateDone&&s.missionDone))return;if(s.phase==='result'&&s.a&&!s.stats.includes(0))rememberStory(s.a);tripEvent(t,'選擇以此結局結束探險。');s.end=t;s.phase='ended';viewer.close();save()}
 function crisis(){let e=stories['story:take:'+String(s.mission).padStart(4,'0')+':01'];return '<section class="panel storyMessage"><small>故事訊息　／　獲取 '+s.mission+'</small><h2>屬性歸零</h2>'+flowCard(s.mission,'本局使命')+'<p>'+esc(e?.[1]||'請閱讀《獲取》故事書中的使命條目。')+'</p>'+storyRefs(e?.[1]||'','take',s.reading||{},'crisis')+btn('依條目作最後一搏','lastStand()')+btn('結算探險','ending()')+'</section>'}

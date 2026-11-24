@@ -5,10 +5,76 @@ const beetleEncounter=WORLD.stories['story:move:0684:01'][1];
 for(const key of ['story:depart:0684:01','story:depart:0684:02'])WORLD.stories[key][1]=beetleEncounter;
 const westCanyon=WORLD.stories['story:depart:0200:02'];
 if(westCanyon[1].endsWith('前往'))westCanyon[1]+='393。獲得1點士氣。';
+function cleanStoryOcr(t){
+ return t
+  .replace(/([\u4e00-\u9fff，。！？；：、（）「」“”]) +(?=[\u4e00-\u9fff，。！？；：、（）「」“”])/g,'$1')
+  .replace(/([\u4e00-\u9fff]) +(?=\d)/g,'$1')
+  .replace(/(\d) +(?=[\u4e00-\u9fff])/g,'$1')
+  .replace(/方境之書/g,'萬境之書')
+  .replace(/條自/g,'條目')
+  .replace(/自已/g,'自己')
+  .replace(/游戲/g,'遊戲')
+  .replace(/兒乎/g,'幾乎')
+  .replace(/引皖高歌|引高歌/g,'引吭高歌')
+  .replace(/孩人的/g,'駭人的')
+  .replace(/許願並/g,'許願井')
+  .replace(/洗擇/g,'選擇')
+  .replace(/酒落/g,'灑落')
+  .replace(/馬既/g,'馬廄')
+  .replace(/扶行/g,'執行')
+  .replace(/鎖彈升了/g,'鎖彈開了')
+  .replace(/幫能助/g,'幫助')
+  .replace(/仍法正常工作/g,'仍無法正常工作')
+  .replace(/飛船殘([。”」])/g,'飛船殘骸$1')
+  .replace(/一竟是/g,'——竟是')
+  .replace(/洞穴一你/g,'洞穴——你')
+  .replace(/什除非/g,'除非')
+  .replace(/過時全身/g,'時全身')
+  .replace(/行[基果]動/g,'行動')
+  .replace(/與量的感覺/g,'與力量的感覺')
+  .replace(/繼續行壓制/g,'繼續執行壓制')
+  .replace(/噬作響|喻喻作響/g,'嗡嗡作響')
+  .replace(/負詛咒/g,'詛咒')
+  .replace(/智密慧生物/g,'智慧生物')
+  .replace(/1點你士氣/g,'1點士氣')
+  .replace(/當你你提高/g,'當你提高')
+  .replace(/石狀的27球莖/g,'石狀的球莖')
+  .replace(/鄭([一1-9X])/g,'擲$1')
+  .replace(/技能[殷般]/g,'技能骰')
+  .replace(/殷(?=[，。；、）)])/g,'骰')
+  .replace(/獲得口命運/g,'獲得命運')
+  .replace(/獲行命運/g,'獲得命運')
+  .replace(/獲得（一名非常感激的）智慧生物/g,'獲得智慧生物')
+  .replace(/獲得\s*品\s*(\d{3,4})/g,'獲得物品$1')
+  .replace(/獲得\s*(?:20|獻)\s*藍圖\s*(\d{4})/g,'獲得藍圖$1')
+  .replace(/獲得\s*和\s*任務/g,'獲得任務')
+  .replace(/獲得\s*點強化/g,'獲得1點強化')
+  .replace(/和卸1點強化/g,'和1點強化')
+  .replace(/井繼續/g,'並繼續')
+  .replace(/橫向\s*添\s*到/g,'橫向添加到')
+  .replace(/將其\s*向\s*添加到/g,'將其橫向添加到')
+  .replace(/獲得物品1101\s*任務1695/g,'獲得物品1101和任務1695')
+  .replace(/戶體/g,'屍體')
+  .replace(/獲得鋪蓋卷1040/g,'獲得物品1040')
+  .replace(/他們給了你一個力場生成器[（(]982[）)]/g,'他們給了你一個力場生成器（獲得物品982）')
+  .replace(/(?<!獲得)獲\s*(命運|物品|動物|植物|智慧生物|能力|法術|載具|構築物|任務|課程|詛咒)\s*(\d{3,4})/g,'獲得$1$2')
+  .replace(/礦並(?=正在招聘)/g,'礦井')
+  .replace(/聊(?:們天|關)/g,'聊天')
+  .replace(/獲得物品1511092/g,'獲得物品1092')
+  .replace(/獲得物品3041092/g,'獲得物品1092')
+  .replace(/獲得物品戰1092/g,'獲得物品1092')
+  .replace(/獲得動物燈848/g,'獲得動物848')
+  .replace(/獲得物品牌1224/g,'獲得物品1224')
+  .replace(/獲得物品色937/g,'獲得物品937')
+  .replace(/獲得植物。物1062/g,'獲得植物1062')
+  .replace(/([。！？])(?!(?:繼續|前往|退出|否|是|獲得|將卡牌))(?:[0-9]{1,2}[A-Za-z\u4e00-\u9fff]?|[\u4e00-\u9fff]{1,2}[0-9]?)$/,'$1');
+}
 for(const [event,row] of Object.entries(WORLD.stories)){
  if(event.startsWith('story:depart:')&&Number.isInteger(row[2])){
   row[5]=row[5].replace(new RegExp('^[MV]'+row[2]+'(?=向|避開)'), '')
  }
+ if(typeof row[1]==='string')row[1]=cleanStoryOcr(row[1]);
+ if(typeof row[5]==='string')row[5]=cleanStoryOcr(row[5]);
 }
 // Move p. 9. These actions have unconditional outcomes distinct from their exits.
 WORLD.stories['story:move:0201:01'][1]='智慧生物在半空中旋轉，對你的突然出現感到驚訝。「報上你的姓名和意圖！」他要求道。由於沒能在他的資料庫中找到你，他解釋說自己負責在東北邊盜賊之王周邊的地區巡邏，希望你去那裡時別惹麻煩。獲得1點強化。';
@@ -225,7 +291,9 @@ for(let id=1419;id<=1433;id++){
  const ev='story:look:'+id+':printed:learn',isMax=[1423,1428,1433].includes(id);
  const penalty=id===1423?'失去1點生命值。':id===1428?'失去1點士氣。':id===1433?'失去1點時間。':'';
  const nextGain=isMax?'':'獲得課程'+(id+1)+'。';
- WORLD.stories[ev]=[id,penalty+'選擇一項：·保留此課程牌'+(isMax?'':'並獲得下一階課程')+'：'+nextGain+'·失去此課程牌'+(isMax?'':'並獲得下一階課程')+'：'+nextGain,'X','',1,'學習魔法課程'];
+ const keepResult=isMax?'你保留此課程牌。':nextGain;
+ const loseResult=isMax?'失去此牌。':nextGain;
+ WORLD.stories[ev]=[id,penalty+'選擇一項：·保留此課程牌'+(isMax?'':'並獲得下一階課程')+'：'+keepResult+'·失去此課程牌'+(isMax?'':'並獲得下一階課程')+'：'+loseResult,'X','',1,'學習魔法課程'];
  WORLD.cards[id].actions=[{action_uid:'action:'+id+':learn',action:'學習',family:'導航',event_uid:ev,book:'look',entry:id,repeatable:true}];
 }
 // 9. Truncated Story Restorations (Move, Look, Take, Engage, Help, Overpower, Depart)
@@ -365,11 +433,45 @@ for(const [ev,suffix] of [
  ['story:depart:0726:02','727、向東前往410、向南前往725或向西前往720。'],
  ['story:depart:0734:03','1263）。向西前往435。'],
  ['story:depart:0751:01','750；如果此行動的費用未減少至1點，還能獲得1點士氣。'],
- ['story:depart:0752:01','753；如果此行動的費用未減少至1點，還能獲得1點士氣。']
+ ['story:depart:0752:01','753；如果此行動的費用未減少至1點，還能獲得1點士氣。'],
+ ['story:depart:0356:02','578），或者避過它（地點497）。'],
+ ['story:engage:0400:01','234、東北邊的元素體處616、東南邊的金屬智慧生物處606或西南邊的寶箱處199。'],
+ ['story:engage:0433:01','獲得1點生命值）。'],
+ ['story:engage:0642:01','478、東南邊的水下競技場647或西南邊的深海之花處635。當你抵達時，忽略缺氧傷害（如果有）。'],
+ ['story:overpower:0670:01','1136。你可以選擇停止或繼續執行壓制-4-挖掘行動以深入（然後閱讀下一結果）：腳下的土地突然塌陷，你跌入深淵。前往洞穴089。'],
+ ['story:engage:0156:01','1604（將其放置在中央區）。'],
+ ['story:engage:0158:01','1628（將其橫向添加到你的供應區中）。'],
+ ['story:engage:0169:01','1607（將其放置在中央區）。'],
+ ['story:engage:0204:01','1688；你可以逐個選擇將這些物品放置在你的儲備區或網格中。'],
+ ['story:engage:0216:01','1603（將其放置在中央區）。'],
+ ['story:engage:0404:01','1606（將其放置在中央區）。'],
+ ['story:engage:0472:01','1605（將其放置在中央區）。'],
+ ['story:engage:0572:01','1606（將其放置在中央區），然後退出至396。'],
+ ['story:engage:0573:01','909，退出至410。'],
+ ['story:engage:0579:01','993，退出至499。'],
+ ['story:engage:0711:01','1601（將其放置在中央區）。'],
+ ['story:engage:0725:01','1673（將其橫向添加到你的供應區中）。'],
+ ['story:help:0521:01','1287。'],
+ ['story:help:0527:01','1272。'],
+ ['story:help:0764:01','1641（將其橫向添加到你的供應區中）。'],
+ ['story:help:0785:scan:01','1680（將其橫向添加到你的供應區中）。'],
+ ['story:look:0302:01','1598（將其放置在中央區）。'],
+ ['story:look:0751:01','1643（將其橫向添加到你的供應區中）。'],
+ ['story:move:0776:01','1389；向北前往777。'],
+ ['story:overpower:0695:01','1604（將其放置在中央區）。'],
+ ['story:secrets:0537:01','1141。如果失敗，失去1點強化（如果可能）。'],
+ ['story:take:0522:01','1472、$4和1點士氣。'],
+ ['story:help:0226:01','力1491；你可以繼續。'],
+ ['story:engage:0130:01','798放在桌面上（它是一張大牌）並遵循其指示。']
 ]){
  const r=WORLD.stories[ev];
  if(r&&!r[1].endsWith(suffix))r[1]+=suffix;
 }
+if(WORLD.stories['story:help:0080:01'])WORLD.stories['story:help:0080:01'][1]=WORLD.stories['story:help:0080:01'][1].replace('獲得智慧生物股，','獲得智慧生物1339和$1；你可以繼續。');
+if(WORLD.stories['story:help:0189:01'])WORLD.stories['story:help:0189:01'][1]=WORLD.stories['story:help:0189:01'][1].replace(/獲得物品生$/, '獲得物品933；你可以向北前往194。');
+if(WORLD.stories['story:help:0617:recovered:0159'])WORLD.stories['story:help:0617:recovered:0159'][1]='選擇一項：·用黃金製作：獲得物品1099。·用冰塊製作：獲得物品1100。';
+if(WORLD.stories['story:look:0600:01'])WORLD.stories['story:look:0600:01'][1]='宇宙學院的三位教授向你致意，並邀請你選擇自己的奧術學派，選擇一項：·學習生命魔法：葉智慧生物張開雙臂歡迎你。獲得課程1419和1點生命值。·學習能量魔法：能量智慧生物用一個笑話歡迎你。獲得課程1424和1點士氣。·學習心靈魔法：沙智慧生物用一句忠告歡迎你。獲得課程1429和1點強化。';
+if(WORLD.stories['story:take:0160:recovered:0048'])WORLD.stories['story:take:0160:recovered:0048'][1]=WORLD.stories['story:take:0160:recovered:0048'][1].replace(/，$/,'。');
 WORLD.stories['story:move:0762:01'][1]='選擇跟隨的對象：·跟隨智慧生物向南：前往761並獲得智慧生物1328且其「放置時」的效果只有1點強化（而非2點強化）。·跟隨道路向北：這條道路通向首都城市。前往763。·跟隨道路向東：這條道路通向首都城市的正門。前往768。';
 WORLD.stories['story:move:0763:01'][1]='如果你擁有至少1件物品，前往內部589。否則，守衛因你沒有任何可以獻給創始者的東西而將你拒之門外；獲得1點強化並繼續。';
 WORLD.stories['story:take:0577:01'][1]='你等待適當時機，當房間空無一人時，取走了一支裝滿納米技術的注射劑。獲得物品869並退出至464。';
@@ -719,13 +821,14 @@ definePrintedBranches('story:move:0684:01','選擇一項',[
 for(const row of Object.values(WORLD.stories)){
  const body=row[1],compact=body.replace(/\s/g,'');
  if(/[·•●]/.test(compact))continue;
- const check=compact.match(/擲(\d+)顆技能骰並獲得所有的?(移動|查看|接觸|幫助|獲取|壓制)結果。(?:然後)?除非你支付(\d+)點\2，否則失去(\d+)點生命值?。((?:然後)?(?:獲得(?:物品|植物|動物|智慧生物)\d{3,4}(?:和詛咒\d{4})?|前往\d{3})。|)$/);
+ const check=compact.match(/擲(\d+)顆技能骰並獲得所有的?(移動|查看|接觸|幫助|獲取|壓制)結果。(?:然後)?[，,、]?(?:除非|若)(?:你)?支付(\d+)點\2(?:[^，。]*?)，?否則(?:受到(\d+)點(?:高溫|寒冷|缺氧)?傷害|失去(\d+)點生命值?)。((?:然後)?(?:獲得(?:物品|植物|動物|智慧生物)\d{3,4}(?:和詛咒\d{4})?|前往\d{3}|向[東西南北]前往\d{3}|你可以繼續)?[。！？]?|$)/);
  if(!check)continue;
- const [,count,skill,price,loss,shared]=check;
+ const [,count,skill,price,dmgLoss,hpLoss,shared]=check;
+ const loss=dmgLoss||hpLoss;
  const intro=compact.slice(0,check.index)+'擲'+count+'顆技能骰並獲得所有的'+skill+'結果。';
  const tail=shared.replace(/^然後/,'');
- printedBranches.set(body,[intro,'·支付'+price+'點'+skill+'：避開攻擊。'+tail,
-  '·承受攻擊（生命 −'+loss+'）：失去'+loss+'點生命。'+tail])
+ printedBranches.set(body,[intro,'·支付'+price+'點'+skill+'：避開威脅。'+tail,
+  '·承受傷害（損失'+loss+'點）：受到傷害。'+tail])
 }
 // Move p. 9 and Depart p. 8 both send the unpaid route to 205.
 for(const event of ['story:depart:0205:02','story:depart:0200:01','story:move:0200:01'])definePrintedBranches(event,'你可以支付',[
@@ -801,7 +904,7 @@ definePrintedBranches('story:depart:0486:03','你可以再失去',[
  ['支付1點生命穿越鏡面沙地','向南前往736。'],
  ['掉頭留在地點 486','你回到原地。']
 ]);
-for(const book of ['help','take']){
+for(const book of ['engage','help','take']){
  const rides=[['西北',476],['東北',478],['東南',647],['西南',635]].map(([direction,n])=>
   ['搭乘動物往'+direction+'（'+n+'）','前往'+n+'。此次抵達忽略缺氧傷害。']);
  definePrintedBranches('story:'+book+':0642:01','你可以搭乘',[...rides,['不搭乘，留在地點 642','你留在原地。']])
@@ -815,6 +918,50 @@ printedBranches.set(WORLD.stories['story:help:0659:01'][1],[
 definePrintedBranches('story:overpower:0458:01','向東前往',[
  ['往東過橋（764）','前往764。繼續。'],
  ['往南過橋（457）','前往457。繼續。']
+]);
+definePrintedBranches('story:engage:0400:01','你可以選擇前往：',[
+ ['前往西北邊燈籠照亮的沼澤地（234）','前往234。'],
+ ['前往東北邊的元素體處（616）','前往616。'],
+ ['前往東南邊的金屬智慧生物處（606）','前往606。'],
+ ['前往西南邊的寶箱處（199）','前往199。']
+]);
+definePrintedBranches('story:depart:0356:02','你可以選擇',[
+ ['遊進倉庫（前往內部578）','前往內部578。'],
+ ['避過倉庫（前往地點497）','前往497。']
+]);
+definePrintedBranches('story:engage:0640:01','並選擇',[
+ ['向北前往641','前往641。'],
+ ['前往內部582','前往內部582。']
+]);
+definePrintedBranches('story:engage:0646:01','選擇一項：',[
+ ['支付$2換取信息','獲得1點強化。獲得1點移動。獲得任務1656（將其橫向添加到你的供應區）。'],
+ ['支付1點強化換取信息','獲得1點移動。獲得任務1656（將其橫向添加到你的供應區中）。'],
+ ['什麼都不支付','獲得詛咒1385。獲得2點強化。']
+]);
+definePrintedBranches('story:engage:0161:01','他提議',[
+ ['收取酬勞（獲得$5）','獲得$5。'],
+ ['邀請智慧生物同行','獲得智慧生物1315。']
+]);
+definePrintedBranches('story:depart:0158:01','你可以選擇',[
+ ['進入洞穴（前往洞穴039）','前往洞穴039。'],
+ ['向北前往163','前往163。']
+]);
+definePrintedBranches('story:depart:0162:01','選擇一項：',[
+ ['進入城市','前往城市525並獲得1點隨機技能。'],
+ ['向北涉水經過城市','前往167。']
+]);
+definePrintedBranches('story:depart:0172:01','選擇一項：',[
+ ['沿著海岸線向西漫步','前往251。'],
+ ['向北徒步攀上陡峭的山峰','失去1點時間並前往252。']
+]);
+definePrintedBranches('story:depart:0488:02','選擇一項：',[
+ ['向南艱行繞過城市','前往748。'],
+ ['從後門入口進入城市','前往城市531。']
+]);
+definePrintedBranches('story:depart:0500:01','你可以增加2點費用',[
+ ['向北移動（基本費用）','受到1點高溫傷害並前往359。'],
+ ['向西北移動（費用增加2點）','前往358。'],
+ ['向東北移動（費用增加2點）','前往360。']
 ]);
 {
  const text=WORLD.stories['story:engage:0217:01'][1];
@@ -2305,7 +2452,7 @@ for(const row of Object.values(WORLD.stories)){
  const options=text.slice(offer.index+offer[0].length).split('·').map(v=>'·'+v.trim().replace('物品1263；商人','物品1263。商人'));
  printedBranches.set(text,[text.slice(0,offer.index),...options,'·'+(text.includes('旅行商人')?'不購買':'略過這些選項')+'，獲得1點強化：獲得1點強化。'])
 }
-const routesEndingAction=new Set(['story:overpower:0583:01','story:overpower:0582:recovered:0147','story:depart:0577:01','story:look:0580:01',...Object.keys(cityEntryFollowups).filter(event=>event!=='story:look:0627:01'),'story:take:0658:01','story:take:0642:01','story:help:0642:01','story:take:0294:01','story:take:0491:01','story:take:0492:01','story:help:0314:01','story:depart:0375:02','story:depart:0486:recovered:02','story:engage:0630:01','story:engage:0365:01'].map(event=>WORLD.stories[event][1]));
+const routesEndingAction=new Set(['story:overpower:0583:01','story:overpower:0582:recovered:0147','story:depart:0577:01','story:look:0580:01',...Object.keys(cityEntryFollowups).filter(event=>event!=='story:look:0627:01'),'story:take:0658:01','story:take:0642:01','story:help:0642:01','story:engage:0642:01','story:engage:0400:01','story:depart:0356:02','story:engage:0640:01','story:depart:0158:01','story:depart:0162:01','story:depart:0172:01','story:depart:0488:02','story:depart:0500:01','story:take:0294:01','story:take:0491:01','story:take:0492:01','story:help:0314:01','story:depart:0375:02','story:depart:0486:recovered:02','story:engage:0630:01','story:engage:0365:01'].map(event=>WORLD.stories[event]?.[1]).filter(Boolean));
 function autoExtractChoiceBranches(body){
  if(!body||typeof body!=='string')return null;
  const epic=body.match(/你可以選擇獲得命運(\d{4})或任意其他命運[^。]*以追求史詩勝利，或者直接以使命勝利結束遊戲。?$/);

@@ -1,6 +1,6 @@
 // Only settle literal rewards. Conditions, costs, alternatives and variable quantities require a decision.
-const rewardUnit=/隨機技能|移動|查看|接觸|幫助|獲取|壓制|強化|錢幣|生命值?|士氣|時間/;
-const rewardCard=/藍圖|法術|詛咒|物品|動物|植物|能力|載具|建築|構築物|課程|命運|任務|智慧生物|智慧生|卡牌|經驗牌|經驗|同伴|盟友|裝備/;
+const rewardUnit=/隨機技能|移動|查看|接觸|幫助|獲取|壓制|強化|錢幣|生命值?|士氣值?|時間/;
+const rewardCard=/藍圖|法術|詛咒|物品|動物|植物|能力|載具|建築|構築物|課程|命運|任務|智慧生物|智慧生|元素體|卡牌|經驗牌|經驗|同伴|盟友|裝備/;
 const rewardPattern=new RegExp('(?:(\\d+)(?:點|枚|個)?('+rewardUnit.source+')|[$＄](\\d+)|(?:一張|1張)?('+rewardCard.source+')[(（]?(\\d{3,4})[)）]?)','y');
 function endingSkillOffer(text){
  const compact=text.replace(/\s/g,'')
@@ -20,28 +20,78 @@ function directRewards(text){
  const offer=endingSkillOffer(text);
  if(offer)text=offer.compact.slice(0,offer.start)+(offer.boost?'。獲得'+offer.boost+'點強化。':'');
  const found=[];
- for(let sentence of text.split(/[。！？\n]|，然後(?=(?:你)?可以選擇回到外面（退出至\d{3}）或進入城市（前往\d{3}）)/)){
-  sentence=sentence.replace(/\s+/g,'').replace(/^為了幫助你找到(?:可以發現植物|能夠回答此問題)的地點，(?=獲得)/,'');
-  if(/如果|若|否則|或者|或|可以|可獲|支付|花費|選擇|選一|至少|至多|最多|根據|每(?:有|獲|個|張|點)|時[，：]|而非|改為|隨機抽|擲出|比.{0,4}多|[·•●]/.test(sentence))continue;
+ const condRe=/如果|若|否則|或者|或|可以|可獲|支付|花費|選擇|選一|至少|至多|最多|根據|每(?:有|獲|個|張|點)|時[，：]|而非|改為|隨機抽|擲出|比.{0,4}多|[·•●]/;
+ const parseClause=(sentence)=>{
+  let initBoostOverride=null;
+  if(/且其[“「]?放置時[”」]?的效果只有1點強化[（(]而非2點強化[）)]/.test(sentence)){
+   initBoostOverride=1;
+   sentence=sentence.replace(/且其[“「]?放置時[”」]?的效果只有1點強化[（(]而非2點強化[）)]/g,'');
+  }
+  const attachBoost=sentence.match(/並在其上附帶(\d+)點強化/);
+  if(attachBoost){
+   initBoostOverride=Number(attachBoost[1]);
+   sentence=sentence.replace(/並在其上附帶\d+點強化/g,'');
+  }
+  sentence=sentence.replace(/[；;]?你可以逐個選擇將這些物品放置在你的儲備區或網格中/g,'');
+  if(condRe.test(sentence))return;
   sentence=sentence.replace(/[（(][^）)]*(?:供應區|中央區|網格)[^）)]*[）)]/g,'').replace(/[；，]?(?:將其|將任務)?(?:橫向)?添加到你的(?:供應區|中央區|網格)[^）)]*[）)]?/g,'');
-  const start=sentence.indexOf('獲得');if(start<0)continue;
+  const mGain=sentence.match(/獲得|獲取(?=(?:一張|1張)?(?:藍圖|法術|詛咒|物品|動物|植物|能力|載具|建築|構築物|課程|命運|任務|智慧生物|智慧生|元素體|卡牌)\d{3,4})/);
+  if(!mGain)return;
+  const start=mGain.index;
   const prefix=sentence.slice(0,start);
-  if(prefix&&!/[，；並且再後也]$/.test(prefix))continue;
-  if(/[·•●]|(?:^|[，；])[0-9]+[：:]/.test(prefix))continue;
-  let rest=sentence.slice(start+2),items=[];
-  const named=rest.match(/^((?:元素體|內部|植物|寶藏|高塔|球體|城市|骸骨|神器|試煉)地圖|藥劑鋪|智慧生物之書|動物之書)[（(](\d{4})[）)]$/);
-  if(named&&cards[named[2]]){
-   found.push({card:Number(named[2]),type:named[1]==='藥劑鋪'?'構築物':'物品',label:'獲得'+rest});
-   continue
+  if(prefix&&!/[，；;並且再後也”」“「"：:中以]$/.test(prefix))return;
+  if(/[·•●]|(?:^|[，；;])[0-9]+[：:]/.test(prefix))return;
+  let rest=sentence.slice(start+2).replace(/[.。]+$/,''),items=[],lastCardType=null;
+  const named=rest.match(/^([^（(，；;。！？]{1,12})[（(](\d{3,4})[）)](.*)$/);
+  if(named&&cards[named[2]]&&cards[named[2]].home!=='location'&&(!named[3]||/^[；;，,]/.test(named[3])||/^(?:你可以繼續|並|然後|繼續|參閱|參見|前往|退出至)/.test(named[3]))){
+   const e={card:Number(named[2]),type:named[1]==='藥劑鋪'?'構築物':'物品',label:'獲得'+named[1]+'（'+named[2]+'）'};
+   if(initBoostOverride!=null)e.initialBoost=initBoostOverride;
+   found.push(e);
+   return
   }
   while(rest){
-   rewardPattern.lastIndex=0;const m=rewardPattern.exec(rest);if(!m)break;
-   const e=m[5]?{card:+m[5],type:m[4]}:{kind:(m[2]||'錢幣').replace('生命值','生命'),delta:Number(m[1]||m[3])};
-   if(e.card&&!cards[e.card])break;
-   items.push({...e,label:'獲得'+m[0]});rest=rest.slice(m[0].length);
-   rest=rest.replace(/^[（(][^）)]*(?:供應區|中央區|網格)[^）)]*[）)]/,'');
-   if(!rest||/^[；，]?(?:你可以繼續|並繼續|繼續|參閱|(?:然後|並)?(?:前往|退出至)|並且不能在此處執行其他地點行動|並向[東西南北]前往)/.test(rest)){found.push(...items);break}
-   const next=rest.match(/^(?:以及|和|與|及|並|、|，|；)(?:獲得)?/);if(!next)break;rest=rest.slice(next[0].length)
+   rewardPattern.lastIndex=0;const m=rewardPattern.exec(rest);
+   let e=null,consumed=0;
+   if(m){
+    e=m[5]?{card:+m[5],type:m[4]}:{kind:(m[2]||'錢幣').replace('生命值','生命').replace('士氣值','士氣'),delta:Number(m[1]||m[3])};
+    if(e.card)lastCardType=m[4];
+    consumed=m[0].length;
+    if(e.card&&!cards[e.card])break;
+    e.label='獲得'+m[0];
+   }else if(lastCardType){
+    const bare=rest.match(/^(\d{3,4})/);
+    if(!bare||!cards[+bare[1]]||cards[+bare[1]].home==='location')break;
+    e={card:+bare[1],type:lastCardType,label:'獲得'+lastCardType+bare[1]};
+    consumed=bare[0].length;
+   }else break;
+   if(e.card&&initBoostOverride!=null)e.initialBoost=initBoostOverride;
+   items.push(e);rest=rest.slice(consumed);
+   rest=rest.replace(/^[（(][^）)]*[）)]/,'');
+   if(!rest||/^[；;，,.]/.test(rest)||/^(?:你可以繼續|並繼續|繼續|參閱|參見|(?:然後|並)?(?:前往|退出至)|並且|並(?:在|增加|駕駛|向[東西南北]前往))/.test(rest)){
+    const next=rest.match(/^(?:[，、；;]\s*)?(?:以及|和|與|及|並)(?:獲得|增加|在你的角色上獲得)?|^[，、；;](?:獲得|增加|在你的角色上獲得)?/);
+    if(next&&rest.length>next[0].length){
+     const probe=rest.slice(next[0].length);
+     rewardPattern.lastIndex=0;
+     if(rewardPattern.exec(probe)||(lastCardType&&/^\d{3,4}/.test(probe))){rest=probe;continue}
+    }
+    found.push(...items);break
+   }
+   const next=rest.match(/^(?:[，、；;]\s*)?(?:以及|和|與|及|並)(?:獲得|增加|在你的角色上獲得)?|^[，、；;](?:獲得|增加|在你的角色上獲得)?/);if(!next)break;rest=rest.slice(next[0].length)
+  }
+ };
+ for(let sentence of text.split(/[。！？\n]|，然後(?=(?:你)?可以選擇回到外面（退出至\d{3}）或進入城市（前往\d{3}）)/)){
+  sentence=sentence.replace(/\s+/g,'').replace(/^為了幫助你找到(?:可以發現植物|能夠回答此問題)的地點，(?=獲得)/,'');
+  if(!sentence)continue;
+  const beforeCount=found.length;
+  parseClause(sentence);
+  // 也解析無條件句中括號內的（獲得物品XXX）等獎勵，例如「你順走了羅盤（獲得物品968），然後...」
+  if(found.length===beforeCount&&/[（(]獲得/.test(sentence)){
+   const outer=sentence.replace(/[（(]獲得[^）)]+[）)]/g,'');
+   if(!condRe.test(outer)&&!/失去|替換|交換|出售/.test(outer)){
+    for(const pm of sentence.matchAll(/[（(](獲得[^）)]+)[）)]/g)){
+     parseClause(pm[1]);
+    }
+   }
   }
  }
  return found
@@ -56,6 +106,7 @@ function creditReward(e,a){
    else if(cards[n].orientation==='landscape')s.supply.push(n);
    else {
     (s.unplaced??=[]).push(n);
+    if(e.initialBoost!=null&&a){(a.customInitBoost??={})[n]=e.initialBoost}
     if(n===1013&&['story:take:0381:01','story:engage:0381:01'].includes(a?.event))s.boost[n]=1
     if(n===826&&['story:engage:0252:01','story:move:0252:01','story:overpower:0252:01'].includes(a?.event))s.boost[n]=1
    }
@@ -536,7 +587,8 @@ function fillAcquiredCards(){
   if(slot<0)break;
   s.unplaced.shift();s.grid[slot]=n;
   let initBoost=cards[n].initial;
-  if(mapIds.includes(n))initBoost=gridAdjacentSlots(slot).filter(idx=>s.grid[idx]&&idx!==slot).length;
+  if(s.a?.customInitBoost?.[n]!=null)initBoost=s.a.customInitBoost[n];
+  else if(mapIds.includes(n))initBoost=gridAdjacentSlots(slot).filter(idx=>s.grid[idx]&&idx!==slot).length;
   else if(n===1013&&(s.a?.workshop581Product===1013||['story:take:0381:01','story:engage:0381:01'].includes(s.a?.event)))initBoost=1;
   else if(n===826&&['story:engage:0252:01','story:move:0252:01','story:overpower:0252:01'].includes(s.a?.event))initBoost=1;
   s.boost[n]=Math.min(initBoost,cards[n].cap);
