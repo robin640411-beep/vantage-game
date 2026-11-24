@@ -312,8 +312,8 @@ function mainTurn(){
     '<h2 style="color:#8a1f1f;margin:6px 0 10px;">受到【'+esc(h.type)+'】傷害！</h2>'+
     '<p>抵達地點時受到了 1 點'+esc(h.type)+'傷害。請依規則選擇承受方式：</p>'+
     '<div style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0 6px;">'+
-      btn('失去 1 點生命 ('+statArt(2)+'生命 '+s.stats[2]+' ➔ '+(s.stats[2]-1)+')','chooseHazardDamage(true)',true)+
-      btn('同時失去 1 點時間與 1 點士氣 ('+statArt(0)+'時間 '+s.stats[0]+' ➔ '+(s.stats[0]-1)+'，'+statArt(1)+'士氣 '+s.stats[1]+' ➔ '+(s.stats[1]-1)+')','chooseHazardDamage(false)')+
+      '<button class="primary" onclick="chooseHazardDamage(true)">失去 1 點生命（'+statArt(2)+'生命 '+s.stats[2]+' ➔ '+(s.stats[2]-1)+'）</button>'+
+      '<button onclick="chooseHazardDamage(false)">同時失去 1 點時間與 1 點士氣（'+statArt(0)+'時間 '+s.stats[0]+' ➔ '+(s.stats[0]-1)+'，'+statArt(1)+'士氣 '+s.stats[1]+' ➔ '+(s.stats[1]-1)+'）</button>'+
       (h.type==='高溫'?[857,858].filter(n=>s.grid.includes(n)&&s.boost[n]>0).map(n=>btn('使用水袋 '+n+'（消耗 1 點強化）忽略此高溫傷害','chooseHazardWaterskin('+n+')')).join(''):'')+
     '</div>'+
     (s.pendingHazards.length>1?'<small class="note">尚有 '+(s.pendingHazards.length-1)+' 點傷害待結算。</small>':'')+
